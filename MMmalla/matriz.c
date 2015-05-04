@@ -11,9 +11,10 @@
 
 main(int argc, char **argv)
 {
-   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0,dimension, init = 0,usu = 0,destino,origen,sizeBuffer,errores;
+   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0, dimension,init = 0,usu = 0,destino,origen,sizeBuffer,errores;
    int fila,columna,i,k=0; 
    double *a,*b,*c,*buffer;
+ 
    
    int * mifila; 
 	
@@ -41,14 +42,14 @@ main(int argc, char **argv)
 			printf("Vuelve a lanzar el programa con una dimensión menor a 4x4");
 			exit(0);
 		}
-		if(dimension%2 != 0 && dimension%3 != 0) 
+		if(dimension*dimension != numprocs) 
 		{
 			printf("El número de procesos no es un cuadrado perfecto\n");
-			printf("Vuelve a lanzar el programa con un número de procesos que sea un cuadrado perfecto (por ejemplo 9)");
+			printf("Vuelve a lanzar el programa con un número de procesos que sea un cuadrado perfecto (por ejemplo 9)\n");
 			exit(0); 
 			
 		}
-
+		
 			while(bloqvalido == 0)
 			{
 				printf("Introduce el tamaño de bloques para la matriz\n");
@@ -90,7 +91,6 @@ main(int argc, char **argv)
 			inicializar_matrices(a,b, dimension, bloqtam, fila, columna, i, myrank); 
 			 calcular_mifila(mifila,dimension,columna,fila,myrank);
 
-			//printf("Bloques a y b del proceso %d inicializados\n",myrank);
 			
 		}
 		else
@@ -109,29 +109,22 @@ main(int argc, char **argv)
 
 			inicializar_matrices(a,b, dimension, bloqtam, fila, columna, i, myrank); 
 			calcular_mifila(mifila,dimension,columna,fila,myrank);
-			//printf("Bloques a y b del proceso %d inicializados\n",myrank);
 			
 		}
 		usu = 2; //ya se ha terminado de inicializar los bloques
 	
 	
-	
-		 //necesitamos saber los master de la primera iteracion k = 0 fila + columna
-		/*
-		 * Dado que hay una rotación a la derecha, los consiguientes master para las demás iteraciones, se calcularán en función del anterior - i (si las dependencias son hacia la 
-		 * izquierda) o anterior + i (si las dependencias son hacia la derecha) 
-		 * */
-		int tarea, col, fil;
-			MPI_Pack_size(pow(bloqtam,2),MPI_DOUBLE,MPI_COMM_WORLD, &sizeBuffer);
-			sizeBuffer = numprocs*(sizeBuffer + MPI_BSEND_OVERHEAD);
-			buffer = (double *)malloc(sizeBuffer);
-			MPI_Buffer_attach( buffer, sizeBuffer);
-		int calc_a = 1;	
+		
+		MPI_Pack_size(pow(bloqtam,2),MPI_DOUBLE,MPI_COMM_WORLD, &sizeBuffer);
+		sizeBuffer = numprocs*(sizeBuffer + MPI_BSEND_OVERHEAD);
+		buffer = (double *)malloc(sizeBuffer);
+		MPI_Buffer_attach( buffer, sizeBuffer);
+
+		int tarea, calc_a = 1;	
 		while(k < dimension) //donde k es el número de iteraciones 
 		{
 			//Envío de A
-			if(calc_a == 1)
-			{
+			
 				if(columna == (fila + k)% dimension)
 				{
 					
@@ -153,10 +146,9 @@ main(int argc, char **argv)
 					free(atmp);
 				}
 				calc_a = 0;
-			}
+			
 			//Envío de B
-			else
-			{
+		
 				if(fila == 0)
 				{
 					destino = (dimension - 1) * dimension + columna;
@@ -179,7 +171,7 @@ main(int argc, char **argv)
 				 MPI_Bsend(b,pow(bloqtam,2),MPI_DOUBLE,destino,8,MPI_COMM_WORLD);
 				 MPI_Recv(b,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
 				 calc_a = 1;
-			}       
+		       
 			k++;
 
 		}
