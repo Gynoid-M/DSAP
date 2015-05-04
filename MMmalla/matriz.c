@@ -81,9 +81,9 @@ main(int argc, char **argv)
 			c= malloc(bloqtam*bloqtam*sizeof(double));
 			mifila=malloc((dimension - 1)*sizeof(int));
 			inicializar_matrices(a,b, dimension, bloqtam, fila, columna, i, myrank); 
-			 calcular_mifila(&mifila,dimension,columna);
+			 calcular_mifila(mifila,dimension,columna,fila,myrank);
 
-			printf("Bloques a y b del proceso %d inicializados\n",myrank);
+			//printf("Bloques a y b del proceso %d inicializados\n",myrank);
 			
 		}
 		else
@@ -95,14 +95,17 @@ main(int argc, char **argv)
 			 a = malloc(bloqtam*bloqtam*sizeof(double));
 			b= malloc(bloqtam*bloqtam*sizeof(double));
 			c= malloc(bloqtam*bloqtam*sizeof(double));
-			mifila=malloc((dimension - 1)*sizeof(int));			
+			mifila=malloc((dimension - 1)*sizeof(int));	
+
+			fila = myrank / dimension;
+			columna = myrank % dimension;
+
 			inicializar_matrices(a,b, dimension, bloqtam, fila, columna, i, myrank); 
-			calcular_mifila(&mifila,dimension,columna);
-			printf("Bloques a y b del proceso %d inicializados\n",myrank);
+			calcular_mifila(mifila,dimension,columna,fila,myrank);
+			//printf("Bloques a y b del proceso %d inicializados\n",myrank);
 			
 		}
-		
-	
+		usu = 2; //ya se ha terminado de inicializar los bloques
 	
 	
 	
@@ -119,21 +122,27 @@ main(int argc, char **argv)
 				
 				for(tarea = 0; tarea < dimension - 1; tarea++)
 				{
-					MPI_Send(a,pow(bloqtam,2),MPI_DOUBLE,tarea,8,MPI_COMM_WORLD);
+					MPI_Send(a,pow(bloqtam,2),MPI_DOUBLE,mifila[tarea],8,MPI_COMM_WORLD);
 				}
-				mult(a,b,&c,pow(bloqtam,2));
+				mult(a,b,c,bloqtam);
 			}
 			else
 			{
 				int origen = ((fila + k)% dimension) + fila*dimension;
-				int * atmp;
-				MPI_Recv(a,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
-				atmp = a; //debe de verse si se puede recibir en una variable auxiliar
+				printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar datos de %d\n", myrank,k,origen);
+				int * atmp = malloc(bloqtam*bloqtam*sizeof(double));
+				MPI_Recv(atmp,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
+				
 
-				mult(atmp,b,&c,pow(bloqtam,2));
+				mult(atmp,b,c,bloqtam);
+
+				free(atmp);
 			}
 
+			k++;
+
 		}
+
 	
 	
 	MPI_Finalize(); 
@@ -150,11 +159,10 @@ void mult(double a[], double b[], double *c, int m)
 	return; 
 }
 
-void inicializar_matrices(double a[] , double b[], int dimension, int bloqtam, int fila, int columna, int i, int myrank)
+void inicializar_matrices(double * a , double * b, int dimension, int bloqtam, int fila, int columna, int i, int myrank)
 {
 			int tam = pow(bloqtam,2);
-			fila = myrank / dimension;
-			columna = myrank % dimension;
+			
 			
 			float pos = pow (((fila*columna)+1),2);
 			
@@ -175,7 +183,7 @@ void inicializar_matrices(double a[] , double b[], int dimension, int bloqtam, i
 				
 				rellenob = 0;
 			}
-			printf("%d \n ",a[0]);
+			
 			
 			
 			
@@ -183,14 +191,14 @@ void inicializar_matrices(double a[] , double b[], int dimension, int bloqtam, i
 			
 }
 
-void calcular_mifila(int * mifila, dimension,columna)
+void calcular_mifila(int * mifila, int dimension, int columna,int fila, int myrank)
 {
 	int i, j = 0;
 	for (i=0; i<dimension; i++)
 	{
 		if(i != columna)
 		{
-			mifila[j] = fila*dimension + columna;
+			mifila[j] = (fila*dimension) + i;
 			j++;
 		}
 	}
