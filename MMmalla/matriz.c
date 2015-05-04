@@ -11,16 +11,16 @@
 
 main(int argc, char **argv)
 {
-   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0,dimension, init = 0,usu = 0,destino;
+   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0,dimension, init = 0,usu = 0,destino,origen,sizeBuffer;
    int fila,columna,i,k=0; 
-   double *a;
-   double *b;
-   double *c;
+   double *a,*b,*c,*buffer;
+   
    int * mifila; 
 	
-	
-
-   MPI_Status estado; 
+   MPI_Status estado;
+    
+   MPI_Request request;
+ 
    MPI_Init(&argc,&argv);
    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
@@ -114,62 +114,69 @@ main(int argc, char **argv)
 		 * Dado que hay una rotación a la derecha, los consiguientes master para las demás iteraciones, se calcularán en función del anterior - i (si las dependencias son hacia la 
 		 * izquierda) o anterior + i (si las dependencias son hacia la derecha) 
 		 * */
-		int tarea;
+		int tarea, col, fil;
+			MPI_Pack_size(pow(bloqtam,2),MPI_DOUBLE,MPI_COMM_WORLD, &sizeBuffer);
+			sizeBuffer = numprocs*(sizeBuffer + MPI_BSEND_OVERHEAD);
+			buffer = (double *)malloc(sizeBuffer);
+			MPI_Buffer_attach( buffer, sizeBuffer);
+		int calc_a = 1;	
 		while(k < dimension) //donde k es el número de iteraciones 
 		{
 			//Envío de A
-			if(columna == (fila + k)% dimension)
+			if(calc_a == 1)
 			{
-				
-				for(tarea = 0; tarea < dimension - 1; tarea++)
+				if(columna == (fila + k)% dimension)
 				{
-					MPI_Send(a,pow(bloqtam,2),MPI_DOUBLE,mifila[tarea],8,MPI_COMM_WORLD);
+					
+					for(tarea = 0; tarea < dimension - 1; tarea++)
+					{
+						MPI_Send(a,pow(bloqtam,2),MPI_DOUBLE,mifila[tarea],8,MPI_COMM_WORLD);
+					}
+					mult(a,b,c,bloqtam);
 				}
-				mult(a,b,c,bloqtam);
-			}
-			else
-			{
-				int origen = ((fila + k)% dimension) + fila*dimension;
-				printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar datos de %d\n", myrank,k,origen);
-				int * atmp = malloc(bloqtam*bloqtam*sizeof(double));
-				MPI_Recv(atmp,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
-				
+				else
+				{
+					origen = ((fila + k)% dimension) + fila*dimension;
+					printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar la matriz a de %d\n", myrank,k,origen);
+					int * atmp = malloc(bloqtam*bloqtam*sizeof(double));
+					MPI_Recv(atmp,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
+					
+					mult(atmp,b,c,bloqtam);
 
-				mult(atmp,b,c,bloqtam);
-
-				free(atmp);
+					free(atmp);
+				}
+				calc_a = 0;
 			}
 			//Envío de B
-			//Correción de problemas del ISend, si se seleccionó la opción
-			   if (control == 1) {
-				      MPI_Pack_size(pow(bloqtam,2),MPI_DOUBLE,MPI_COMM_WORLD, &sizeBuffer);
-				      if (myrank == 0) printf("Espacio requerido en buffer: %d\n",sizeBuffer);
-				      sizeBuffer = numprocs*(sizeBuffer + MPI_BSEND_OVERHEAD);
-				      buffer = (double *)malloc(sizeBuffer);
-				      MPI_Buffer_attach( buffer, sizeBuffer);
-   					}
-   					int col, fil;
-   				for (col=dimension - 1; col>=0; col--) {
-   					for(fil = dimension - 1; fil>=0; fil--)
-   					{
-   						if(fil == 0)
-   						{
-   							destino = dimension - 1;
-   						}
-   						if(fil == dimension - 1)
-   						{
-   							origen = 0;
-   						}
-   						destino = fil - 1;
-   						MPI_Isend(b,pow(bloqtam,2),MPI_DOUBLE,destino,8,MPI_COMM_WORLD,&request);
-   						MPI_Recv(b,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&status);
-   						MPI_Wait(&request,&status);
-   					}
-   				}
-			       
+			else
+			{
+				if(fila == 0)
+				{
+					destino = (dimension - 1) * dimension + columna;
+				}
+				else
+				{
+					destino = ((fila - 1) * dimension) + columna; //columna del emisor actual
+					
+				}
+				if(fila == dimension - 1)
+				{
+					origen = columna;
+				}
+				else
+				{
+					origen = ((fila + 1) * dimension) + columna;	
+				}
+						
+				printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar la matriz b de %d\n", myrank,k,origen);
+				 MPI_Bsend(b,pow(bloqtam,2),MPI_DOUBLE,destino,8,MPI_COMM_WORLD);
+				 MPI_Recv(b,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
+				 calc_a = 1;
+			}       
 			k++;
 
 		}
+		MPI_Buffer_detach(buffer, &sizeBuffer);
 
 	
 	
@@ -212,11 +219,7 @@ void inicializar_matrices(double * a , double * b, int dimension, int bloqtam, i
 				rellenob = 0;
 			}
 			
-			
-			
-			
-	
-			
+		
 }
 
 void calcular_mifila(int * mifila, int dimension, int columna,int fila, int myrank)
@@ -231,4 +234,7 @@ void calcular_mifila(int * mifila, int dimension, int columna,int fila, int myra
 		}
 	}
 }
-
+int check_igualdad()
+{
+	
+}
