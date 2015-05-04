@@ -117,6 +117,7 @@ main(int argc, char **argv)
 		int tarea;
 		while(k < dimension) //donde k es el número de iteraciones 
 		{
+			//Envío de A
 			if(columna == (fila + k)% dimension)
 			{
 				
@@ -138,7 +139,34 @@ main(int argc, char **argv)
 
 				free(atmp);
 			}
-
+			//Envío de B
+			//Correción de problemas del ISend, si se seleccionó la opción
+			   if (control == 1) {
+				      MPI_Pack_size(pow(bloqtam,2),MPI_DOUBLE,MPI_COMM_WORLD, &sizeBuffer);
+				      if (myrank == 0) printf("Espacio requerido en buffer: %d\n",sizeBuffer);
+				      sizeBuffer = numprocs*(sizeBuffer + MPI_BSEND_OVERHEAD);
+				      buffer = (double *)malloc(sizeBuffer);
+				      MPI_Buffer_attach( buffer, sizeBuffer);
+   					}
+   					int col, fil;
+   				for (col=dimension - 1; col>=0; col--) {
+   					for(fil = dimension - 1; fil>=0; fil--)
+   					{
+   						if(fil == 0)
+   						{
+   							destino = dimension - 1;
+   						}
+   						if(fil == dimension - 1)
+   						{
+   							origen = 0;
+   						}
+   						destino = fil - 1;
+   						MPI_Isend(b,pow(bloqtam,2),MPI_DOUBLE,destino,8,MPI_COMM_WORLD,&request);
+   						MPI_Recv(b,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&status);
+   						MPI_Wait(&request,&status);
+   					}
+   				}
+			       
 			k++;
 
 		}
