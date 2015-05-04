@@ -11,7 +11,7 @@
 
 main(int argc, char **argv)
 {
-   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0,dimension, init = 0,usu = 0,destino,origen,sizeBuffer;
+   int myrank, numprocs,numprocvalido = 0,bloqtam,bloqvalido=0,dimension, init = 0,usu = 0,destino,origen,sizeBuffer,errores;
    int fila,columna,i,k=0; 
    double *a,*b,*c,*buffer;
    
@@ -35,13 +35,20 @@ main(int argc, char **argv)
 		{
 
 		dimension = sqrt(numprocs);
-	/*	if(dimension%2 != 0 && dimension%3 != 0) 
+		if(dimension > 4)
+		{
+			printf("La dimensión de las matrices no puede ser superior a 4");
+			printf("Vuelve a lanzar el programa con una dimensión menor a 4x4");
+			exit(0);
+		}
+		if(dimension%2 != 0 && dimension%3 != 0) 
 		{
 			printf("El número de procesos no es un cuadrado perfecto\n");
 			printf("Vuelve a lanzar el programa con un número de procesos que sea un cuadrado perfecto (por ejemplo 9)");
 			exit(0); 
 			
-		}*/
+		}
+
 			while(bloqvalido == 0)
 			{
 				printf("Introduce el tamaño de bloques para la matriz\n");
@@ -137,7 +144,7 @@ main(int argc, char **argv)
 				else
 				{
 					origen = ((fila + k)% dimension) + fila*dimension;
-					printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar la matriz a de %d\n", myrank,k,origen);
+					
 					int * atmp = malloc(bloqtam*bloqtam*sizeof(double));
 					MPI_Recv(atmp,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
 					
@@ -168,7 +175,7 @@ main(int argc, char **argv)
 					origen = ((fila + 1) * dimension) + columna;	
 				}
 						
-				printf("Yo soy %d, estoy en la iteracion %d y me tiene que llegar la matriz b de %d\n", myrank,k,origen);
+			
 				 MPI_Bsend(b,pow(bloqtam,2),MPI_DOUBLE,destino,8,MPI_COMM_WORLD);
 				 MPI_Recv(b,pow(bloqtam,2),MPI_DOUBLE,origen,8,MPI_COMM_WORLD,&estado);
 				 calc_a = 1;
@@ -178,7 +185,24 @@ main(int argc, char **argv)
 		}
 		MPI_Buffer_detach(buffer, &sizeBuffer);
 
-	
+		errores = check_igualdad(a,b,c,bloqtam);
+		//Comprobación de errores
+		if(myrank == 0)
+		{
+			int tot_errores = 0;
+			for(i=0;i<numprocs;i++)
+			{
+				MPI_Irecv(&errores,1,MPI_INT,i,8,MPI_COMM_WORLD,&request);
+				printf("La cantidad de errores del proceso %d es %d\n",i, errores);
+				tot_errores = errores + tot_errores;
+			}
+			printf("El total de errores es %d\n", tot_errores);
+			
+		}
+		else
+		{
+			MPI_Send(&errores,1,MPI_INT,0,8,MPI_COMM_WORLD);
+		}
 	
 	MPI_Finalize(); 
  } 
@@ -234,7 +258,19 @@ void calcular_mifila(int * mifila, int dimension, int columna,int fila, int myra
 		}
 	}
 }
-int check_igualdad()
+int check_igualdad(double * a,double *b, double * c, int bloqtam)
 {
+	int i;
+	int tam = pow(bloqtam,2);
+	int errores = 0;
+	for(i=0; i< tam ; i++)
+	{
+		
+		if(a[i]*b[i] != c[i])
+		{
+			errores++;
+		}
+	}
 	
+	return errores;
 }
