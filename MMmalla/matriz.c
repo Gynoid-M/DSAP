@@ -263,7 +263,7 @@ int check_igualdad(double * a,double *b, double * c, int bloqtam)
 	for(i=0; i< tam ; i++)
 	{
 		
-		if(a[i]*b[i] != c[i])
+		if(a[i] != c[i])
 		{
 			errores++;
 		}
