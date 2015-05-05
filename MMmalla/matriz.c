@@ -220,19 +220,24 @@ void inicializar_matrices(double * a , double * b, int dimension, int bloqtam, i
 			
 
 			int rellenob = 0;
+
 			for(i=0; i < (tam - 1) ; i++)
 			{ 
 				
 				a[i]=i*pos/tam;
 				
-				if(rellenob == bloqtam)
+				for(j = 0; i<(tam - 1); i++)
 				{
-					b[i/bloqtam] = 1;
-				}
-				else
-					b[i] = 0;
+					if(j == i)
+					{
+						b[i] = 1;
+					}
+					else
+					{
+						b[i] = 0;
+					}
+				}	
 				
-				rellenob = 0;
 			}
 			
 		
