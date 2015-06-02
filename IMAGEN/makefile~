@@ -1,0 +1,5 @@
+COMP	= mpicc
+OPT     = -O3 -w 
+all: imagen_mpi
+matriz: imagen_mpi.c
+	$(COMP)  $(OPT)  -o $@ $@.c -lm

@@ -84,13 +84,13 @@ main(int argc, char **argv)
 			//inicialización de los bloques, cada uno en su memoria local. 
 			//cada bloque corresponde con un proceso, por eso, se debe de calcular su fila y columna particular. 
 			
-			 a = malloc(bloqtam*bloqtam*sizeof(double));
-			b= malloc(bloqtam*bloqtam*sizeof(double));
-			c= malloc(bloqtam*bloqtam*sizeof(double));
-			mifila=malloc((dimension - 1)*sizeof(int));
-			 atmp = malloc(bloqtam*bloqtam*sizeof(double));
+			a = malloc(bloqtam*bloqtam*sizeof(double));
+			b = malloc(bloqtam*bloqtam*sizeof(double));
+			c = malloc(bloqtam*bloqtam*sizeof(double));
+			mifila = malloc((dimension - 1)*sizeof(int));
+			atmp = malloc(bloqtam*bloqtam*sizeof(double));
 			inicializar_matrices(a,b, c,dimension, bloqtam, 0, 0, i, myrank); 
-			 calcular_mifila(mifila,dimension,columna,fila,myrank);
+			calcular_mifila(mifila,dimension,columna,fila,myrank);
 			
 			
 		}
@@ -101,10 +101,10 @@ main(int argc, char **argv)
 			MPI_Recv(&bloqtam,1,MPI_INT,0,8,MPI_COMM_WORLD,&estado); 
 			MPI_Recv(&dimension,1,MPI_INT,0,8,MPI_COMM_WORLD,&estado); 
 	
-			 a = malloc(bloqtam*bloqtam*sizeof(double));
+			a = malloc(bloqtam*bloqtam*sizeof(double));
 			b= malloc(bloqtam*bloqtam*sizeof(double));
 			c= malloc(bloqtam*bloqtam*sizeof(double));
-			 atmp = malloc(bloqtam*bloqtam*sizeof(double));
+			atmp = malloc(bloqtam*bloqtam*sizeof(double));
 			mifila=malloc((dimension - 1)*sizeof(int));	
 
 			fila = myrank / dimension;
@@ -229,15 +229,10 @@ void mult(double a[], double b[], double *c, int m)
 {
 	int i,j,k;
 	for (i=0; i<m; i++)
-	
 		for (j=0; j<m; j++)
-		
 			for (k=0; k<m; k++)
 			
 				c[i*m+j]=c[i*m+j]+ a[i*m+k]*b[k*m+j];
-			
-		
-	
 	
 }
 
